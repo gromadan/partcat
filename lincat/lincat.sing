@@ -1,0 +1,61 @@
+//if (!defined(tensor)) {LIB "matrix.lib";}
+if (!defined(r)) {ring r=0,(a,n),dp;}
+
+//maximal length of partitions, this must coincide with the input file "maps"
+int lmax=8;
+intvec B=1,2,5,15,52,203,877,4140,21147,115975,678570,4213597,27644437,190899322;
+
+//load the linear maps corresponding to concatenations, rotations and contractions
+//if (!defined(rot)) {execute(read("maps"));}
+execute(read("maps"));
+
+//declaring a category C
+module M;
+list C=M,M,M,M,M,M,M,M,M,M;
+
+proc subn(int k) {
+	int j;
+	for (j=3;j<=9;j++) {
+		cont[j]=subst(cont[j],n,k);
+	}
+	for (j=1;j<=9;j++) {
+		C[j]=subst(C[j],n,k);
+	}
+}
+
+//add partitions in module M to category C
+proc addm(int k,module M) {
+	//if (k==2) {M;}
+	M=std(M);
+	//if (k==2) {M;}
+	if (size(M)==0) {return();}
+	if (k>2) {addm(k-2,cont[k]*matrix(M,B[k],size(M)));}
+	C[k]=C[k]+M;
+	int j;
+	for (j=1;j<k;j++) {
+		M=rot[k]*matrix(M,B[k],size(M));
+		if (k>2) {addm(k-2,cont[k]*matrix(M,B[k],size(M)));}
+		C[k]=C[k]+M;
+	}
+	C[k]=std(C[k]);
+	//if (k==2) {C[2];}
+}
+
+//add all concatenations
+proc addcat() {
+int l;
+int l2;
+	for (l=1;l<=lmax;l++) {
+		for (l2=l;l2<=lmax-l;l2++) {
+			if (size(C[l])>0&&size(C[l2])>0) {
+				l;l2;
+				addm(l+l2,matrix(cat[l][l2],B[l+l2],B[l]*B[l2])*tensor(matrix(C[l],B[l],size(C[l])),matrix(C[l2],B[l2],size(C[l2]))));
+			}
+		}
+	}
+}
+
+//initialization of C
+addm(2,gen(1));
+//addm(3,gen(1)+gen(2));
+
