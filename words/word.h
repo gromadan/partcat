@@ -21,13 +21,16 @@ public:
 	bool operator>=(Word &rhs); 
 	bool isNull() const{return (w==nullptr);}
 	bool isNonCross() const;
+	bool isPair() const;
 	Word conj() const;
 	Word operator+(const Word &q) const;
 	Word rot(int n) const;
 	Word comp(int n) const;
+	int alpha(int n) const;
 	int getl() const {return l;}
 	const char* getw() const {return w;}
 	int getw(int i) const {return w[i];}
+	int intrep() const;
 	bool compatible(int *a, int s, int k) const;
 	static const Word identity;
 	static const Word cross;
@@ -38,8 +41,8 @@ public:
 	static const Word abcb;
 	static Word h(int n);
 	static Word pi(int n);
-private:
-	static int iterate(int *a, int n, int k);
+	static int iterate(char* w, int s);
+	static int iterate2(int *a, int n, int k);
 };
 
 #endif

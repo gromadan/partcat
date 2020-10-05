@@ -170,6 +170,16 @@ bool Word::isNonCross() const {
 }
 
 
+bool Word::isPair() const{
+	for (int let=1;;++let) {
+		int n=0;
+		for (int i=0;i<l;++i)
+			if (w[i]==let) ++n;
+		if ((n==1) || (n>2)) return false;
+		if (n==0) return true;
+	}
+}
+
 
 Word Word::comp(int n) const {
 	if (n<0||n>=l) n=n%l;
@@ -263,14 +273,40 @@ bool Word::compatible(int *a, int s, int k) const{
 	return true;
 }
 
-int Word::iterate(int *a,int n, int k) {
+int Word::intrep() const {
+	char ww[l+1];
+	for (int i=0;i<l;i++) ww[i]=1;
+	ww[l]=0;
+	int n=1;
+	for (int i=0;i<l;i++) {
+		while (ww[i]!=w[i]) {
+			iterate(ww,l);
+			++n;
+		}
+	}
+	return n;
+}
+
+int Word::iterate(char* w, int s) {
+	if (s<=1) return 0;
+	for (int i=0;i<s-1;i++) {
+		if (w[i]>=w[s-1]) {
+			w[s-1]++;
+			return 1;
+		}
+	}
+	w[s-1]=1;
+	return iterate(w,s-1);
+}
+
+int Word::iterate2(int *a,int n, int k) {
 	if (k<=0) return 0;
 	if (a[k-1]<n) {
 		++a[k-1];
 		return 1;
 	}
 	a[k-1]=1;
-	return iterate(a,n,k-1);
+	return iterate2(a,n,k-1);
 }
 
 void Word::printrel(int k, int n) const{
@@ -295,7 +331,7 @@ void Word::printrel(int k, int n) const{
 						if (k>0) cout << "u(" << ab[k-1] << ")(" << cd[k-1] << ")";
 						for(int i=k-2;i>=0;i--) cout << "*u(" << ab[i] << ")(" << cd[i] << ")";
 					}
-				} while (iterate(ab,n,k));
+				} while (iterate2(ab,n,k));
 			}
 			//cout << "=";
 			if (!ccomp) ;// cout << "0";
@@ -308,9 +344,23 @@ void Word::printrel(int k, int n) const{
 						if (k<l) cout << "u(" << ab[k] << ")(" << cd[k] << ")";
 						for(int i=k+1;i<l;i++) cout << "*u(" << ab[i] << ")(" << cd[i] << ")";
 					}
-				} while (iterate(cd+k,n,l-k));
+				} while (iterate2(cd+k,n,l-k));
 			}
 		cout << "," <<endl;
-		} while (iterate(ab+k,n,l-k));
-	} while (iterate(cd,n,k));
+		} while (iterate2(ab+k,n,l-k));
+	} while (iterate2(cd,n,k));
+}
+
+int Word::alpha(int n) const {
+	if (n<0||n>=l) n=n%l;
+	if (n==0) {
+		for(int i=1;i<l-1;i++)
+			if (w[i]==w[0] || w[i]==w[l-1]) return 0;
+	} else { 
+		for (int i=0;i<n-1;i++) 
+			if (w[i]==w[n] || w[i]==w[n-1]) return 0;
+		for (int i=n+1;i<l;i++)
+			if (w[i]==w[n] || w[i]==w[n-1]) return 0;
+	}
+	return 1;
 }

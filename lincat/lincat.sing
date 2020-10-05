@@ -1,61 +1,91 @@
-//if (!defined(tensor)) {LIB "matrix.lib";}
+////////////////////////////////////////////////////////////////////////
+//            lincat.sing
+//            Set of procedures for approximating partition categories
+///////////////////////////////////////////////////////////////////////
+//
+//AUTHOR:     Daniel Gromada, email:gromada@math.uni-sb.de
+//
+//SUPPORT:    This project is funded by the SFB-TRR 195
+//  'Symbolic Tools in Mathematics and their Application'.
+//
+//USAGE:      The procedures and their usage are described in [1].
+//  Executing the code creates a list C of modules approximating some category
+//  of partitions. At the beginning, the category is intialized to contain
+//  only the pair partition. Additional partitions can be added using addParts.
+//  The procedure addParts also adds all possible rotations and contractions.
+//  Using addTensors, one can add also tensor products for all pairs of
+//  elements that are contained in C.
+//  The procedures assume that we are working over a polynomial ring with
+//  indeterminate "n" that plays the role of the loop parameter (denoted by
+//  delta in [1]. In order to set the loop parameter to some concrete integer
+//  value m, then one can run subn(m);
+//  The approximation of the morphism spaces C[k] is computed for k<=lmax.
+//  By default, we set lmax=8.
+//  The operations of tensor product, contraction, and rotation are
+//  precomputed in the file "maps". Those are computed up to k=9. If one
+//  needs to increase the length bound above 9, the file "maps" has to
+//  be generated again.
+//
+//REFERENCES:
+//  [1] D. Gromada, M. Weber: Generating linear categories of partitions
+//      arXiv:1904.00166
+//
+
+
+if (!defined(tensor)) {LIB "matrix.lib";}
 if (!defined(r)) {ring r=0,(a,n),dp;}
 
 //maximal length of partitions, this must coincide with the input file "maps"
 int lmax=8;
+
+//Bell numbers
 intvec B=1,2,5,15,52,203,877,4140,21147,115975,678570,4213597,27644437,190899322;
 
 //load the linear maps corresponding to concatenations, rotations and contractions
-//if (!defined(rot)) {execute(read("maps"));}
 execute(read("maps"));
 
 //declaring a category C
 module M;
-list C=M,M,M,M,M,M,M,M,M,M;
+list C=M,M,M,M,M,M,M,M,M;
 
 proc subn(int k) {
 	int j;
-	for (j=3;j<=9;j++) {
+	for (j=3;j<=lmax;j++) {
 		cont[j]=subst(cont[j],n,k);
 	}
-	for (j=1;j<=9;j++) {
+	for (j=1;j<=lmax;j++) {
 		C[j]=subst(C[j],n,k);
 	}
 }
 
 //add partitions in module M to category C
-proc addm(int k,module M) {
-	//if (k==2) {M;}
+proc addParts(int k,module M) {
 	M=std(M);
-	//if (k==2) {M;}
 	if (size(M)==0) {return();}
-	if (k>2) {addm(k-2,cont[k]*matrix(M,B[k],size(M)));}
+	if (k>2) {addParts(k-2,cont[k]*matrix(M,B[k],size(M)));}
 	C[k]=C[k]+M;
 	int j;
 	for (j=1;j<k;j++) {
 		M=rot[k]*matrix(M,B[k],size(M));
-		if (k>2) {addm(k-2,cont[k]*matrix(M,B[k],size(M)));}
+		if (k>2) {addParts(k-2,cont[k]*matrix(M,B[k],size(M)));}
 		C[k]=C[k]+M;
 	}
 	C[k]=std(C[k]);
-	//if (k==2) {C[2];}
 }
 
 //add all concatenations
-proc addcat() {
+proc addTensors() {
 int l;
 int l2;
 	for (l=1;l<=lmax;l++) {
 		for (l2=l;l2<=lmax-l;l2++) {
 			if (size(C[l])>0&&size(C[l2])>0) {
-				l;l2;
-				addm(l+l2,matrix(cat[l][l2],B[l+l2],B[l]*B[l2])*tensor(matrix(C[l],B[l],size(C[l])),matrix(C[l2],B[l2],size(C[l2]))));
+				addParts(l+l2,matrix(cat[l][l2],B[l+l2],B[l]*B[l2])*tensor(matrix(C[l],B[l],size(C[l])),matrix(C[l2],B[l2],size(C[l2]))));
 			}
 		}
 	}
 }
 
 //initialization of C
-addm(2,gen(1));
-//addm(3,gen(1)+gen(2));
+addParts(2,gen(1));
 
