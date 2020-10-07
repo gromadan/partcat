@@ -1,0 +1,429 @@
+category="Miscellaneous";
+info="
+LIBRARY:      plin.lib
+              Framework for working with linear combinations of partitions
+
+AUTHOR:       Daniel Gromada, gromada@math.uni-sb.de
+
+SUPPORT:      This project is funded by the SFB-TRR 195
+  'Symbolic Tools in Mathematics and their Application'.
+
+OVERVIEW:     This library provides a framework for working with
+  linear combinations of partitions and their categories.
+
+REFERENCES:
+  [1]  T. Banica, R. Speicher: Liberation of orthogonal Lie groups
+       Adv. Math. 222(4):1461-1501 (2009)
+  [2]  D. Gromada, M. Weber: Generating linear categories of partitions
+       arXiv: 1904.00166 (2019)
+
+KEYWORDS:     partitions, monoidal categories
+
+PROCEDURES:
+	plin_init();                Initializes everything
+	plin_null();                Returns zero plin
+	plin_tabprint(plin);        Tabular print
+	plin_reduce(plin);          Reduce polynomials defining plin
+	plin_reduce_id(plin,ideal); The same wrt an ideal
+	plin_genclasses(int);       Generate classes of plins of given len wrt rot
+	plin_switch(plin,int,int);  Switch two pts in a plin
+	plin_inner(plin,plin);      Coordinatewise inner product
+	plin_inner2(plin,plin);     Inner product of the form <p,q>=p*q
+	plin_print(plin);           Print a plin
+	plin_tensor(plin, plin);    Tensor product of plins
+	plin_mult(poly,plin);       Multiply plin by a polynomial
+	plin_sum(plin, plin);       Add two plins
+	plin_subtract(plin,plin);   Subtract two plins
+	plin_refl(plin);            Reflection of plins (linear!)
+	plin_rot(plin);             Rotation of plin (by one point)
+	plin_rotn(plin,int);        Rotation of plin (by n points)
+	plin_cont(plin p, int k);   Contraction of plin on pos. k and k+1
+	plin_gcont(plin p, int k1, int k2); Contraction on pos. k1 and k2
+	plin_comp(plin,plin, int);  Composition of two plins
+	plin_getlin(intvec p);      Creates a plin from an integer vector
+	iterate(intvec, int);       Iterates through all partitions of given len
+	part_normalize(intvec);     Returns lexicographically smallest rep of part
+	part_tensor(intvec, intvec) Tensor product of partitions
+	part_cont(intvec, int)      Contraction of a partition on pos k and k+1
+	part_gcont(intvec p, int k1, int k2) Contraction of part on pos k1 and k2
+	part_alpha(intvec,int);     Returns number of loops due to contraction
+	part_galpha(intvec,int, int); The same for gcont
+	part_comp(intvec,intvec, int); Composition of partitions
+	part_refl(intvec);          Reflection of a partition
+	part_rot(intvec);           Rotation of a partition (by one point)
+	part_rotn(intvec,int);      Rotation of a partition (by n points)
+";
+
+LIB "matrix.lib";
+
+proc plin_init() {
+	newstruct("plin","list l, vector v");
+	system("install", "plin", "=", plin_getlin, 1);
+	system("install", "plin", "print", plin_print, 1);
+	system("install", "plin", "*", plin_mult, 2);
+	system("install", "plin", "+", plin_sum, 2);
+	system("install", "plin", "-", plin_subtract, 2);
+}
+
+proc plin_null() {
+	plin ret;
+	ret.v=0;
+	return(ret);
+}	
+
+proc plin_tabprint(plin p) {
+	if (size(p.l)==0) {print(v[1]);return();}
+	int k=size(p.l[1]);
+	string s;
+	int i,j;
+	list l=plin_genclasses(k);
+	for (i=1;i<=size(l);i++) {
+		"----------";
+		for (j=1;j<=size(l[i].l);j++) {
+			print("("+string(l[i].l[j])+")  "+string(plin_inner(l[i].l[j],p)));
+		}
+	}
+}
+	
+
+proc plin_reduce(plin p) {
+	p.v=reduce(p.v,std(0));
+	return(p);
+}
+
+proc plin_reduce_id(plin p,ideal i) {
+	p.v=reduce(p.v,std(i));
+	return(p);
+}
+
+proc plin_genclasses(int k) {
+	intvec w;
+	intvec wr;
+	int i;
+	list l;
+	int contained=0;
+	for (i=1;i<=k;i++) {w[i]=1;}
+	while (w!=0) {
+		contained=0;
+		for (i=1;i<=size(l);i++) {
+			if (plin_inner(w,l[i])!=0) {
+				contained=1;
+				break;
+			}
+		}
+		if (!contained) {
+			l[size(l)+1]=plin(w);
+			wr=part_rot(w);
+			while(wr!=w) {
+				l[size(l)]=l[size(l)]+wr;
+				wr=part_rot(wr);
+			}
+		}
+		w=iterate(w,k);
+	}
+	return(l);
+}
+
+proc plin_switch(plin p,int i1,int i2) {
+	int let;
+	for (int i=1;i<=size(p.l);i++) {
+		let=p.l[i][i2];
+		p.l[i][i2]=p.l[i][i1];
+		p.l[i][i1]=let;
+		p.l[i]=part_normalize(p.l[i]);
+	}
+	return(p);
+}
+
+proc plin_inner(plin p,plin q) {
+	if (size(p.l[1])!=size(q.l[1])) {return(0);}
+	poly ret;
+	int i;
+	int j;
+	for (i=1;i<=size(p.l);i++) {
+		for (j=1;j<=size(q.l);j++) {
+			if (p.l[i]==q.l[j]) {
+				ret=ret+p.v[i]*q.v[j];
+			}
+		}
+	}
+	return(ret);
+}
+
+proc plin_inner2(plin p,plin q) {
+	if (size(p.l[1])!=size(q.l[1])) {return(0);}
+	if (p.v==0 || q.v==0) {return(0);}
+	plin ret=plin_comp(plin_refl(p),q,size(p.l[1]));
+	return(ret.v[1]);
+}
+
+
+proc plin_print(plin p){
+	string s;
+	if (p.v==0) {
+		print(0);
+		return();
+	}
+	if (size(p.l)==0) {
+		print(p.v[1]);
+		return();
+	}
+	for(int i=1;i<=nrows(p.v);i++) {
+		if (p.v[i]!=0) {
+			s=s+"("+string(p.v[i])+")*("+string(p.l[i])+")+";
+		}
+	}
+	s[size(s)]="";
+	print(s);
+}
+
+proc plin_tensor(plin p, plin q) {
+	if (p.v==0 || q.v==0) {return(plin_null());}
+	plin ret;
+	int i;
+	int j;
+	for (i=1;i<=nrows(p.v);i++) {
+		for (j=1;j<=nrows(q.v);j++) {
+			ret.l[(i-1)*nrows(q.v)+j]=part_tensor(p.l[i],q.l[j]);
+		}
+	}
+	ret.v=tensor(matrix(p.v),matrix(q.v))[1];
+	return(ret);
+}
+
+proc plin_mult(poly f,plin p) {
+	p.v=f*p.v;
+	return(plin(p));
+}
+
+proc plin_sum(plin p, plin q) {
+	if (p.v==0) {return(q);}
+	if (q.v==0) {return(p);}
+	int found;
+	int i;
+	int j;
+	for (j=1;j<=size(q.l);j++) {
+		if (q.v[j]!=0) {
+			found=0;
+			for (i=1;i<=size(p.l);i++) {
+				if (p.l[i]==q.l[j]) {
+					p.v=p.v+q.v[j]*gen(i);
+					found=1;
+					break;
+				}
+			}
+			if (found==0) {
+				p.l[size(p.l)+1]=q.l[j];
+				p.v=p.v+q.v[j]*gen(size(p.l));
+			}
+		}
+	}
+	return(p);
+}
+
+proc plin_subtract(plin p,plin q) {
+	return(p+(-1)*q);
+}
+
+proc plin_refl(plin p) {
+	for (int i=1;i<=size(p.l);i++) {
+		p.l[i]=part_refl(p.l[i]);
+	}
+	return(p);
+}
+
+proc plin_rot(plin p) {
+	for (int i=1;i<=size(p.l);i++) {
+		p.l[i]=part_rot(p.l[i]);
+	}
+	return(p);
+}
+
+proc plin_rotn(plin p,int k) {
+	k=k%size(p.l[1]);
+	if (k==0) {return(p);}
+	if (k<0) {k=k+size(p.l[1]);}
+	for (int i=1;i<=size(p.l);i++) {
+		p.l[i]=part_rotn(p.l[i],k);
+	}
+	return(p);
+}
+
+proc plin_cont(plin p, int k) {
+	if (p.v==0) {return(plin_null());}
+	plin ret; 
+	if (size(p.l[1])<2) {
+		return(plin_null());
+	}
+	if (size(p.l[1])==2) {
+		ret.v=n*(p.v[1]+p.v[2])*gen(1);
+		return(ret);
+	}
+	for (int i=1;i<=size(p.l);i++) {
+		if (part_alpha(p.l[i],k)==1) {ret=ret+n*p.v[i]*plin(part_cont(p.l[i],k));}
+		else {ret=ret+p.v[i]*plin(part_cont(p.l[i],k));}
+	}
+	ret=plin_reduce(ret);//ret;
+	return(ret);
+}
+
+proc plin_gcont(plin p, int k1, int k2) {
+	if (p.v==0) {return(plin_null());}
+	plin ret;
+	for (int i=1;i<=size(p.l);i++) {
+		if (part_galpha(p.l[i],k1,k2)==1) {ret=ret+n*p.v[i]*plin(part_gcont(p.l[i],k1,k2));}
+		else {ret=ret+p.v[i]*plin(part_gcont(p.l[i],k1,k2));}
+	}
+	ret=plin_reduce(ret);//ret;
+	return(ret);
+}
+
+proc plin_comp(plin p,plin q, int k) {
+	if (p.v==0 || q.v==0) {return(plin_null());}
+	plin ret=plin_tensor(p,q);
+	for(int i=size(p.l[1]);i>size(p.l[1])-k;i--) {
+		ret=plin_cont(ret,i);
+	}
+	return(ret);
+}
+
+proc plin_getlin(intvec p){
+	plin ret;
+	ret.l=list(p);
+	ret.v=gen(1);
+	return(ret);
+}
+
+proc iterate(intvec p, int s) {
+	if (s<=1) {return(0);}
+	for (int i=1;i<s;i++) {
+		if (p[i]>=p[s]) {
+			p[s]=p[s]+1;
+			return(p);
+		}
+	}
+	p[s]=1;
+	return(iterate(p,s-1));
+}
+
+proc part_normalize(intvec p){
+	intvec ret;
+	int let=1;
+	int j;
+	ret[size(p)]=0;
+	for(int i=1;i<=size(p);i++) {
+		if (ret[i]==0) {
+			for(j=i;j<=size(p);j++)
+				{if (p[j]==p[i])
+					{ret[j]=let;}}
+			let++;
+		}
+	}
+	return(ret);
+}
+
+proc part_tensor(intvec p, intvec q) {
+	int max=0;
+	for (int i=1;i<=size(p);i++) {
+		if (p[i]>max) {max=p[i];}
+	}
+	return(intvec(p,q+max));
+}
+
+proc part_cont(intvec p, int k) {
+	if (k<0) {k=k%size(p)+size(p);}
+	if (k>=size(p)) {k=k%size(p);}
+	intvec ret;
+	int i;
+	if (k==0) {
+		for(i=2;i<size(p);i++) {
+			if (p[i]==p[size(p)]) {ret[i-1]=p[1];}
+			else {ret[i-1]=p[i];}
+		}
+	} else {
+		for (i=1;i<k;i++) {
+			if (p[i]==p[k+1]) {ret[i]=p[k];}
+			else {ret[i]=p[i];}
+		}
+		for (i=k+2;i<=size(p);i++) {
+			if (p[i]==p[k+1]) {ret[i-2]=p[k];}
+			else {ret[i-2]=p[i];}
+		}
+	}
+	return(part_normalize(ret));
+}
+
+proc part_gcont(intvec p, int k1, int k2) {
+	intvec ret;
+	int i;
+	if (k2<k1) {
+		i=k2;
+		k2=k1;
+		k1=i;
+	}
+	for (i=1;i<k1;i++) {
+		if (p[i]==p[k2]) {ret[i]=p[k1];}
+		else {ret[i]=p[i];}
+	}
+	for (i=k1+1;i<k2;i++) {
+		if (p[i]==p[k2]) {ret[i-1]=p[k1];}
+		else {ret[i-1]=p[i];}
+	}
+	for (i=k2+1;i<=size(p);i++) {
+		if (p[i]==p[k2]) {ret[i-2]=p[k1];}
+		else {ret[i-2]=p[i];}
+	}
+	return(part_normalize(ret));
+}
+
+proc part_alpha(intvec p,int k) {
+	if (k<0||k>=size(p)) {k=k%size(p);}
+	int i;
+	if (k==0) {
+		for(i=2;i<size(p);i++) {
+			if (p[i]==p[1] || p[i]==p[size(p)]) {return(0);}}
+	} else { 
+		for (i=1;i<k;i++) {
+			if (p[i]==p[k] || p[i]==p[k+1]) {return(0);}}
+		for (i=k+2;i<=size(p);i++) {
+			if (p[i]==p[k] || p[i]==p[k+1]) {return(0);}}
+	}
+	return(1);
+}
+
+proc part_galpha(intvec p,int k1, int k2) {
+	int i;
+	if (k2<k1) {
+		i=k2;
+		k2=k1;
+		k1=i;
+	}
+	for (i=1;i<k1;i++) {
+		if (p[i]==p[k1] || p[i]==p[k2]) {return(0);}}
+	for (i=k1+1;i<k2;i++) {
+		if (p[i]==p[k1] || p[i]==p[k2]) {return(0);}}
+	for (i=k2+1;i<=size(p);i++) {
+		if (p[i]==p[k1] || p[i]==p[k2]) {return(0);}}
+	return(1);
+}
+
+proc part_comp(intvec p,intvec q, int k) {
+	intvec ret=part_tensor(p,q);
+	for(int i=size(p);i>size(p)-k;i--) {
+		ret=part_cont(ret,i);
+	}
+	return(ret);
+}
+
+proc part_refl(intvec p) {
+	return(part_normalize(intvec(p[size(p)..1])));
+}
+
+proc part_rot(intvec p) {
+	return(part_normalize(intvec(p[size(p)],p[1..(size(p)-1)])));
+}
+
+proc part_rotn(intvec p,int k) {
+	return(part_normalize(intvec(p[size(p)-k+1..size(p)],p[1..(size(p)-k)])));
+}
+
