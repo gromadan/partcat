@@ -1,4 +1,4 @@
-#partcat
+# partcat
 
 This repository contains tools for working with (linear) categories of partitions.
 
@@ -8,15 +8,15 @@ This repository contains tools for working with (linear) categories of partition
 
 See the README files in the corresponding folders for more information.
 
-##Acknowledgement
+## Acknowledgement
 
 This work was done as a part of a PhD project of Daniel Gromada at Saarland University. It was supported by the collaborative research centre SFB-TRR 195 "Symbolic tools in mathematics and their Application".
 
-##Authors
+## Authors
 
   * Daniel Gromada -- gromada@math.uni-sb.de
 
-##References
+## References
 
   [1] D. Gromada: Compact matrix quantum groups and their representation categories.
       PhD thesis, Saarland University (2020). [doi:10.22028/D291-32389](http://dx.doi.org/10.22028/D291-32389).
